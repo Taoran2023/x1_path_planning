@@ -122,7 +122,6 @@ def _plot_edges(
 
     return domain_colors  # 方便你在外面拿到颜色映射做legend/debug
 
-
 def plot_graph_on_blank(
     g,
     *,
@@ -143,6 +142,11 @@ def plot_graph_on_blank(
     domain_colors: Optional[Dict[str, Any]] = None,
     portal_color: Any = "black",
     edge_color_seed: Optional[int] = 0,
+
+    # NEW: goals overlay
+    goals: Optional[List[Any]] = None,   # Any to avoid import cycle; ideally List[Goal]
+    goal_marker_size: float = 140,
+    goal_show_label: bool = True,
 ):
     fig, ax = plt.subplots(figsize=figsize)
 
@@ -163,6 +167,16 @@ def plot_graph_on_blank(
 
     if show_nodes:
         _plot_nodes(ax, g, tag_style=tag_style, show_legend=show_legend)
+
+    # NEW: plot goals on top
+    if goals:
+        for goal in goals:
+            plot_goal(
+                ax,
+                goal,
+                size=goal_marker_size,
+                show_label=goal_show_label,
+            )
 
     ax.set_title(title)
     ax.set_xlabel("x")
@@ -195,6 +209,11 @@ def plot_graph_on_costmap(
     domain_colors: Optional[Dict[str, Any]] = None,
     portal_color: Any = "black",
     edge_color_seed: Optional[int] = 0,
+
+    # NEW: goals overlay
+    goals: Optional[List[Any]] = None,   # Any to avoid import cycle; ideally List[Goal]
+    goal_marker_size: float = 140,
+    goal_show_label: bool = True,
 ):
     T = np.array(costmap, dtype=float)
 
@@ -228,6 +247,16 @@ def plot_graph_on_costmap(
     if show_nodes:
         _plot_nodes(ax, g, tag_style=tag_style, show_legend=show_legend)
 
+    # NEW: plot goals on top
+    if goals:
+        for goal in goals:
+            plot_goal(
+                ax,
+                goal,
+                size=goal_marker_size,
+                show_label=goal_show_label,
+            )
+
     ax.set_title(title)
     ax.set_xlabel("x")
     ax.set_ylabel("y")
@@ -235,74 +264,244 @@ def plot_graph_on_costmap(
     plt.show()
 
     return domain_colors
+# def plot_graph_on_blank(
+#     g,
+#     *,
+#     width: float,
+#     height: float,
+#     title: str = "Graph (blank map)",
+#     figsize: Tuple[float, float] = (6.5, 6.5),
+#     show_edges: bool = True,
+#     show_nodes: bool = True,
+#     show_legend: bool = True,
+#     tag_style: Optional[Dict[str, Dict]] = None,
+#     edge_alpha: float = 0.25,
+#     edge_linewidth: float = 1.0,
+#     portal_alpha: float = 0.6,
+#     portal_linewidth: float = 1.5,
+
+#     # NEW: edge color options
+#     domain_colors: Optional[Dict[str, Any]] = None,
+#     portal_color: Any = "black",
+#     edge_color_seed: Optional[int] = 0,
+# ):
+#     fig, ax = plt.subplots(figsize=figsize)
+
+#     ax.set_xlim(0, width)
+#     ax.set_ylim(0, height)
+#     ax.set_aspect("equal", adjustable="box")
+#     ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.4)
+
+#     if show_edges:
+#         domain_colors = _plot_edges(
+#             ax, g,
+#             alpha=edge_alpha, linewidth=edge_linewidth,
+#             portal_alpha=portal_alpha, portal_linewidth=portal_linewidth,
+#             domain_colors=domain_colors,
+#             portal_color=portal_color,
+#             random_seed=edge_color_seed,
+#         )
+
+#     if show_nodes:
+#         _plot_nodes(ax, g, tag_style=tag_style, show_legend=show_legend)
+
+#     ax.set_title(title)
+#     ax.set_xlabel("x")
+#     ax.set_ylabel("y")
+#     plt.tight_layout()
+#     plt.show()
+
+#     return domain_colors  # 可选：返回用于 legend/debug
+
+
+# def plot_graph_on_costmap(
+#     costmap: np.ndarray,
+#     g,
+#     *,
+#     title: str = "Graph on costmap",
+#     figsize: Tuple[float, float] = (6.5, 6.5),
+#     origin: str = "lower",
+#     show_colorbar: bool = True,
+#     show_edges: bool = True,
+#     show_nodes: bool = True,
+#     show_legend: bool = True,
+#     tag_style: Optional[Dict[str, Dict]] = None,
+#     edge_alpha: float = 0.25,
+#     edge_linewidth: float = 1.0,
+#     portal_alpha: float = 0.6,
+#     portal_linewidth: float = 1.5,
+#     inf_as_max: bool = True,
+
+#     # NEW: edge color options
+#     domain_colors: Optional[Dict[str, Any]] = None,
+#     portal_color: Any = "black",
+#     edge_color_seed: Optional[int] = 0,
+# ):
+#     T = np.array(costmap, dtype=float)
+
+#     if inf_as_max:
+#         finite = T[np.isfinite(T)]
+#         maxv = finite.max() if finite.size > 0 else 1.0
+#         T = T.copy()
+#         T[~np.isfinite(T)] = maxv * 1.2
+
+#     fig, ax = plt.subplots(figsize=figsize)
+
+#     im = ax.imshow(T, origin=origin)
+#     if show_colorbar:
+#         plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
+#     H, W = T.shape
+#     ax.set_xlim(0, W)
+#     ax.set_ylim(0, H)
+#     ax.set_aspect("equal", adjustable="box")
+
+#     if show_edges:
+#         domain_colors = _plot_edges(
+#             ax, g,
+#             alpha=edge_alpha, linewidth=edge_linewidth,
+#             portal_alpha=portal_alpha, portal_linewidth=portal_linewidth,
+#             domain_colors=domain_colors,
+#             portal_color=portal_color,
+#             random_seed=edge_color_seed,
+#         )
+
+#     if show_nodes:
+#         _plot_nodes(ax, g, tag_style=tag_style, show_legend=show_legend)
+
+#     ax.set_title(title)
+#     ax.set_xlabel("x")
+#     ax.set_ylabel("y")
+#     plt.tight_layout()
+#     plt.show()
+
+#     return domain_colors
 
 
     
     
 #     --------------------------------------------------------------------------  #
 
+def plot_goal(
+    ax,
+    goal,
+    *,
+    size: float = 120,
+    edgecolor: str = "k",
+    linewidth: float = 1.5,
+    zorder: int = 10,
+    show_label: bool = True,
+):
+    """
+    Plot a start/end goal on given axes.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    goal : Goal
+        Goal object with fields:
+          - goal.type_tag ("start" / "end")
+          - goal.pose (x,y)
+          - goal.name (optional)
+    size : float
+        Marker size.
+    """
+
+    x, y = goal.pose
+
+    if goal.type_tag == "start":
+        color = "red"
+        marker = "o"
+    elif goal.type_tag in ("end", "goal"):
+        color = "blue"
+        marker = "o"
+    else:
+        color = "black"
+        marker = "o"
+
+    ax.scatter(
+        [x], [y],
+        s=size,
+        c=color,
+        marker=marker,
+        edgecolors=edgecolor,
+        linewidths=linewidth,
+        zorder=zorder,
+    )
+
+    if show_label:
+        label = goal.name if goal.name else goal.type_tag
+        ax.text(
+            x, y,
+            f" {label}",
+            color=color,
+            fontsize=10,
+            weight="bold",
+            zorder=zorder + 1,
+        )
 
 
+#     --------------------------------------------------------------------------  #
 
 
 # viz_utils.py
 
 
 
-def plot_graph_edges(
-    ax: plt.Axes,
-    g,
-    *,
-    etypes: Optional[Union[str, Iterable[str]]] = None,
-    show_portal_emphasis: bool = True,
-    alpha: float = 0.25,
-    linewidth: float = 1.0,
-    portal_alpha: float = 0.6,
-    portal_linewidth: float = 1.5,
-    zorder: int = 3,
-):
-    """
-    Draw ONLY edges of graph on the given matplotlib Axes.
+# def plot_graph_edges(
+#     ax: plt.Axes,
+#     g,
+#     *,
+#     etypes: Optional[Union[str, Iterable[str]]] = None,
+#     show_portal_emphasis: bool = True,
+#     alpha: float = 0.25,
+#     linewidth: float = 1.0,
+#     portal_alpha: float = 0.6,
+#     portal_linewidth: float = 1.5,
+#     zorder: int = 3,
+# ):
+#     """
+#     Draw ONLY edges of graph on the given matplotlib Axes.
 
-    Parameters
-    ----------
-    ax : matplotlib Axes
-        The axes to draw on (so you can overlay on blank or costmap).
-    g : Graph
-        Your graph object (must have g.edges and g.nodes).
-    etypes : None | str | Iterable[str]
-        If provided, only draw edges whose e.etype is in etypes.
-        Examples:
-          - etypes="portal"
-          - etypes=["intra", "portal"]
-    show_portal_emphasis : bool
-        If True, draw portal edges using (portal_alpha, portal_linewidth).
-    alpha, linewidth :
-        Style for non-portal (or non-emphasized) edges.
-    portal_alpha, portal_linewidth :
-        Style for portal edges if show_portal_emphasis is True.
-    zorder : int
-        Matplotlib z-order for drawing.
-    """
-    if etypes is None:
-        etype_set = None
-    else:
-        if isinstance(etypes, str):
-            etype_set = {etypes}
-        else:
-            etype_set = set(etypes)
+#     Parameters
+#     ----------
+#     ax : matplotlib Axes
+#         The axes to draw on (so you can overlay on blank or costmap).
+#     g : Graph
+#         Your graph object (must have g.edges and g.nodes).
+#     etypes : None | str | Iterable[str]
+#         If provided, only draw edges whose e.etype is in etypes.
+#         Examples:
+#           - etypes="portal"
+#           - etypes=["intra", "portal"]
+#     show_portal_emphasis : bool
+#         If True, draw portal edges using (portal_alpha, portal_linewidth).
+#     alpha, linewidth :
+#         Style for non-portal (or non-emphasized) edges.
+#     portal_alpha, portal_linewidth :
+#         Style for portal edges if show_portal_emphasis is True.
+#     zorder : int
+#         Matplotlib z-order for drawing.
+#     """
+#     if etypes is None:
+#         etype_set = None
+#     else:
+#         if isinstance(etypes, str):
+#             etype_set = {etypes}
+#         else:
+#             etype_set = set(etypes)
 
-    for e in g.edges:
-        et = getattr(e, "etype", None)
-        if etype_set is not None and et not in etype_set:
-            continue
+#     for e in g.edges:
+#         et = getattr(e, "etype", None)
+#         if etype_set is not None and et not in etype_set:
+#             continue
 
-        u = g.nodes[e.u]
-        v = g.nodes[e.v]
+#         u = g.nodes[e.u]
+#         v = g.nodes[e.v]
 
-        if show_portal_emphasis and et == "portal":
-            ax.plot([u.x, v.x], [u.y, v.y],
-                    alpha=portal_alpha, linewidth=portal_linewidth, zorder=zorder)
-        else:
-            ax.plot([u.x, v.x], [u.y, v.y],
-                    alpha=alpha, linewidth=linewidth, zorder=zorder)
+#         if show_portal_emphasis and et == "portal":
+#             ax.plot([u.x, v.x], [u.y, v.y],
+#                     alpha=portal_alpha, linewidth=portal_linewidth, zorder=zorder)
+#         else:
+#             ax.plot([u.x, v.x], [u.y, v.y],
+#                     alpha=alpha, linewidth=linewidth, zorder=zorder)

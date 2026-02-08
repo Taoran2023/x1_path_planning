@@ -12,6 +12,9 @@ from typing import Dict, List, Optional, Tuple, Iterable, Any
 import numpy as np
 
 from typing import List, Tuple, Optional, Set, Dict, Iterable, Union
+
+                
+
 # ----------------------------
 # Constants / Tags / Edge Types
 # ----------------------------
@@ -154,7 +157,11 @@ class Graph:
 
     def __len__(self) -> int:
         return len(self.nodes)
-
+    
+    
+    def add_anchor_node(self, *, x: float, y: float, tag: str, score: float, source: str) -> int:
+        # 本质就是 add_node 的一个语义封装
+        return self.add_node(x=x, y=y, tag=tag, score=score, source=source)
 
 # ----------------------------
 # NodeSampler
@@ -752,3 +759,56 @@ class GraphBuilderKNN:
                 w = float(np.sqrt(d2[idx]))
                 g.add_edge(u, v, w, etype="portal", undirected=undirected)
                 added.add(key)
+                
+                
+                
+                
+
+@dataclass
+class Goal:
+    type_tag: str            # "start" or "end" (or "goal")
+    pose: Tuple[float, float]
+    node_id: int             # graph node id for this goal anchor
+    name: Optional[str] = None
+
+                
+                
+
+def add_goal_anchor(
+    g,
+    *,
+    rm,                       # RegionManager
+    goal_type_tag: str,        # "start" / "end"
+    pose: Tuple[float, float], # (x,y)
+    name: str = "",
+    source_prefix: str = "goal",
+) -> Goal:
+    """
+    Create a Goal by FORCE inserting a node at pose.
+    Node tag/score are queried from RegionManager based on pose location.
+    """
+    x, y = float(pose[0]), float(pose[1])
+
+    # 1) query semantic tag/score from region manager
+    node_tag = rm.query_tag(x, y, default="unknown")
+    node_score = rm.query_score(x, y, default=1.0)
+
+    # 2) force insert node at exact pose
+    nid = g.add_node(
+        x=x,
+        y=y,
+        tag=node_tag,      # IMPORTANT: semantic tag
+        score=node_score,
+        source=f"{source_prefix}:{goal_type_tag}" + (f":{name}" if name else "")
+    )
+
+    # 3) return Goal object (holds start/end semantics)
+    return Goal(
+        type_tag=goal_type_tag,
+        pose=(x, y),
+        node_id=nid,
+        name=name or None
+    )
+
+                
+            
