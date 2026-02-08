@@ -810,5 +810,101 @@ def add_goal_anchor(
         name=name or None
     )
 
+# from typing import List, Optional, Tuple, Set
+# import numpy as np
+
+
+def connect_goals_to_graph(
+    g,
+    goals: List,
+    *,
+    r: float,
+    k: int,
+    undirected: bool = True,
+    etype: str = "anchor",
+    skip_portal: bool = True,
+    portal_tag: str = "door",
+) -> None:
+    """
+    Connect each goal anchor node to nearby nodes in the SAME semantic tag.
+
+    Parameters
+    ----------
+    g : Graph
+    goals : list[Goal]
+        Each Goal must have .node_id and the corresponding node exists in g.nodes
+    r : float
+        Search radius in world units
+    k : int
+        Max number of edges to add per goal
+    undirected : bool
+        Whether to add undirected edges (depends on your g.add_edge implementation)
+    etype : str
+        Edge type label, e.g., "anchor"
+    skip_portal : bool
+        If True, do not connect anchor->portal nodes (door nodes), even if tag matches.
+        Recommended, because door tag usually differs anyway.
+    portal_tag : str
+        Portal tag name (default "door")
+    """
+    if r <= 0:
+        raise ValueError("r must be > 0")
+    if k <= 0:
+        raise ValueError("k must be > 0")
+
+    r2 = float(r) * float(r)
+
+    # Build (optional) quick lookup for existing edges to avoid duplicates
+    added: Set[Tuple[int, int]] = set()
+    if hasattr(g, "edges"):
+        for e in g.edges:
+            u, v = int(e.u), int(e.v)
+            added.add((u, v) if u < v else (v, u))
+
+    for goal in goals:
+        gid = int(goal.node_id)
+        gn = g.nodes[gid]
+        goal_tag = getattr(gn, "tag", None)
+
+        if goal_tag is None:
+            continue
+
+        # Collect candidate nodes with same tag (exclude self)
+        cand_ids = []
+        cand_xy = []
+
+        for nid, nd in enumerate(g.nodes):
+            if nid == gid:
+                continue
+            if getattr(nd, "tag", None) != goal_tag:
+                continue
+            if skip_portal and getattr(nd, "tag", None) == portal_tag:
+                continue
+
+            dx = nd.x - gn.x
+            dy = nd.y - gn.y
+            d2 = dx * dx + dy * dy
+            if d2 <= r2:
+                cand_ids.append(nid)
+                cand_xy.append((d2, nid))
+
+        if not cand_xy:
+            # no neighbor in radius -> skip
+            continue
+
+        # sort by distance and take top-k
+        cand_xy.sort(key=lambda t: t[0])
+        chosen = cand_xy[: min(k, len(cand_xy))]
+
+        for d2, nid in chosen:
+            u, v = gid, int(nid)
+            key = (u, v) if u < v else (v, u)
+            if key in added:
+                continue
+
+            w = float(np.sqrt(d2))
+            g.add_edge(u, v, w, etype=etype, undirected=undirected)
+            added.add(key)
+
                 
             
